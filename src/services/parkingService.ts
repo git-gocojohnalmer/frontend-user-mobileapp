@@ -58,14 +58,14 @@ const mapSpot = (spot: ParkingSpotApi): ParkingSpace => ({
 });
 
 export const fetchAllParkingLots = async (): Promise<ParkingLotApi[]> => {
-  return apiFetch<ParkingLotApi[]>('/api/parkinglots', {
+  return apiFetch<ParkingLotApi[]>('/api/parking-lots', { 
     method: 'GET',
     withAuth: true,
   });
 };
 
 export const fetchLayoutsByLot = async (lotId: string): Promise<ParkingLayoutApi[]> => {
-  return apiFetch<ParkingLayoutApi[]>(`/api/parkinglots/${lotId}/layouts`, {
+  return apiFetch<ParkingLayoutApi[]>(`/api/parking-lots/${lotId}/layouts`, { 
     method: 'GET',
     withAuth: true,
   });
