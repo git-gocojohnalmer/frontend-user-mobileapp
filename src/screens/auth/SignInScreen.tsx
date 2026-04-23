@@ -1,6 +1,6 @@
-
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -26,7 +26,7 @@ const benefits = [
 ] as const;
 
 const SignInScreen = ({ navigation }: Props) => {
-  const { register } = useAuth();
+  const { register, isLoading, error, clearError } = useAuth();
 
   const [firstName, setFirstName] = useState('');
   const [middleName, setMiddleName] = useState('');
@@ -55,12 +55,13 @@ const SignInScreen = ({ navigation }: Props) => {
     return !hasRequiredFields || !passwordsMatch;
   }, [email, firstName, lastName, password, confirmPassword]);
 
-  const handleRegister = () => {
+  const handleRegister = async () => {
     if (password !== confirmPassword) {
       return;
     }
 
-    register({
+    clearError();
+    await register({
       firstName: firstName.trim(),
       middleName: middleName.trim(),
       lastName: lastName.trim(),
@@ -114,6 +115,12 @@ const SignInScreen = ({ navigation }: Props) => {
                 Set up your profile to start parking smarter.
               </Text>
             </View>
+
+            {error ? (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
             <View style={styles.nameRow}>
               <View style={styles.nameField}>
@@ -181,11 +188,18 @@ const SignInScreen = ({ navigation }: Props) => {
             </View>
 
             <AppButton
-              title="Create FleXpark account"
+              title={isLoading ? 'Creating FleXpark account...' : 'Create FleXpark account'}
               onPress={handleRegister}
-              disabled={isDisabled}
+              disabled={isDisabled || isLoading}
               style={styles.primaryButton}
             />
+
+            {isLoading ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color="#0F766E" />
+                <Text style={styles.loadingText}>Setting up your account...</Text>
+              </View>
+            ) : null}
 
             <View style={styles.footerRow}>
               <Text style={styles.footerText}>Already have an account?</Text>
@@ -194,6 +208,7 @@ const SignInScreen = ({ navigation }: Props) => {
                 onPress={() => navigation.navigate('Login')}
                 variant="ghost"
                 style={styles.ghostButton}
+                disabled={isLoading}
               />
             </View>
           </View>
@@ -323,6 +338,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  errorBanner: {
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
   nameRow: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -349,6 +379,18 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: spacing.lg,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: spacing.md,
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   footerRow: {
     alignItems: 'center',

@@ -1,22 +1,18 @@
 import React, { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
-import type { UpdateProfile, UserProfile } from '../types/parking';
+import type { RegisterProfile, UpdateProfile, UserProfile } from '../types/parking';
+import { loginUser, logoutUser, registerUser, updateUserProfile, type BackendUser } from '../services/authService';
 
 type AuthContextValue = {
   user: UserProfile | null;
+  uid: string | null;
   isAuthenticated: boolean;
-  login: (profile?: Partial<UserProfile>) => void;
-  logout: () => void;
-  register: (profile?: Partial<UserProfile>) => void;
-  updateProfile: (profile: UpdateProfile) => void;
-};
-
-const defaultUser: UserProfile = {
-  firstName: 'Alex',
-  middleName: '',
-  lastName: 'Johnson',
-  email: 'alex.johnson@example.com',
-  password: 'password123',
-  confirmPassword: 'password123',
+  isLoading: boolean;
+  error: string | null;
+  login: (profile: { email: string; password: string }) => Promise<void>;
+  logout: () => Promise<void>;
+  register: (profile: RegisterProfile) => Promise<void>;
+  updateProfile: (profile: UpdateProfile) => Promise<void>;
+  clearError: () => void;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -25,62 +21,129 @@ type AuthProviderProps = {
   children: ReactNode;
 };
 
+const getUid = (user: BackendUser): string => user.uid ?? user.id ?? '';
+
+const toUserProfile = (u: BackendUser): UserProfile => ({
+  firstName: u.firstName,
+  middleName: u.middleName ?? '',
+  lastName: u.lastName,
+  email: u.email,
+  fullName: [u.firstName, u.middleName ?? '', u.lastName].filter(Boolean).join(' '),
+});
+
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<UserProfile | null>(null);
+  const [uid, setUid] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const login = useCallback((profile?: Partial<UserProfile>) => {
-    setUser({
-      firstName: profile?.firstName ?? defaultUser.firstName,
-      middleName: profile?.middleName ?? defaultUser.middleName,
-      lastName: profile?.lastName ?? defaultUser.lastName,
-      email: profile?.email ?? defaultUser.email,
-      password: profile?.password ?? defaultUser.password,
-      confirmPassword: profile?.confirmPassword ?? profile?.password ?? defaultUser.confirmPassword,
-    });
+  const clearError = useCallback(() => {
+    setError(null);
   }, []);
 
-  const logout = useCallback(() => {
-    setUser(null);
+  const login = useCallback(async (profile: { email: string; password: string }) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const backendUser = await loginUser(profile);
+      setUser(toUserProfile(backendUser));
+      setUid(getUid(backendUser));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to login';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const register = useCallback((profile?: Partial<UserProfile>) => {
-    setUser({
-      firstName: profile?.firstName ?? defaultUser.firstName,
-      middleName: profile?.middleName ?? defaultUser.middleName,
-      lastName: profile?.lastName ?? defaultUser.lastName,
-      email: profile?.email ?? defaultUser.email,
-      password: profile?.password ?? defaultUser.password,
-      confirmPassword: profile?.confirmPassword ?? profile?.password ?? defaultUser.confirmPassword,
-    });
+  const logout = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await logoutUser();
+      setUser(null);
+      setUid(null);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to logout';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  const updateProfile = useCallback((profile: UpdateProfile) => {
-    setUser((currentUser) => {
-      if (!currentUser) return null;
-      return {
-        ...currentUser,
-        ...profile,
-        confirmPassword: currentUser.confirmPassword,
-      };
-    });
+  const register = useCallback(async (profile: RegisterProfile) => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await registerUser({
+        firstName: profile.firstName,
+        middleName: profile.middleName,
+        lastName: profile.lastName,
+        email: profile.email,
+        password: profile.password,
+      });
+
+      const backendUser = await loginUser({
+        email: profile.email,
+        password: profile.password,
+      });
+
+      setUser(toUserProfile(backendUser));
+      setUid(getUid(backendUser));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to register';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
   }, []);
 
-  // You must create the 'value' object to satisfy the AuthContextValue type
-  const value = useMemo(() => ({
-    user,
-    isAuthenticated: !!user,
-    login,
-    logout,
-    register,
-    updateProfile,
-  }), [user, login, logout, register, updateProfile]);
+  const updateProfile = useCallback(async (profile: UpdateProfile) => {
+    if (!uid) {
+      const uidError = new Error('User is not authenticated');
+      setError(uidError.message);
+      throw uidError;
+    }
 
-  // This return block was missing and is required for Context to work
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const backendUser = await updateUserProfile(uid, profile);
+      setUser(toUserProfile(backendUser));
+      setUid(getUid(backendUser) || uid);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update profile';
+      setError(message);
+      throw err;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [uid]);
+
+  const value = useMemo(
+    () => ({
+      user,
+      uid,
+      isAuthenticated: !!user && !!uid,
+      isLoading,
+      error,
+      login,
+      logout,
+      register,
+      updateProfile,
+      clearError,
+    }),
+    [user, uid, isLoading, error, login, logout, register, updateProfile, clearError]
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

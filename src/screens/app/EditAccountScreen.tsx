@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
   Platform,
@@ -19,40 +20,42 @@ import { colors, radius, spacing } from '../../theme';
 type Props = NativeStackScreenProps<AppStackParamList, 'EditAccount'>;
 
 const EditAccountScreen = ({ navigation }: Props) => {
-  const { user, logout, updateProfile } = useAuth();
+  const { user, logout, updateProfile, isLoading, error, clearError } = useAuth();
   const [firstName, setFirstName] = useState(user?.firstName ?? '');
   const [middleName, setMiddleName] = useState(user?.middleName ?? '');
   const [lastName, setLastName] = useState(user?.lastName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
-  const [password, setPassword] = useState(user?.password ?? '');
 
   useEffect(() => {
     setFirstName(user?.firstName ?? '');
     setMiddleName(user?.middleName ?? '');
     setLastName(user?.lastName ?? '');
     setEmail(user?.email ?? '');
-    setPassword(user?.password ?? '');
   }, [user]);
 
   const isDisabled = useMemo(
     () =>
       !firstName.trim() ||
       !lastName.trim() ||
-      !email.trim() ||
-      !password.trim(),
-    [email, firstName, lastName, password]
+      !email.trim(),
+    [email, firstName, lastName]
   );
 
-  const handleSave = () => {
-    updateProfile({
+  const handleSave = async () => {
+    clearError();
+    await updateProfile({
       firstName: firstName.trim(),
       middleName: middleName.trim(),
       lastName: lastName.trim(),
       email: email.trim(),
-      password: password.trim(),
     });
     Alert.alert('Profile updated', 'Your account details have been saved.');
     navigation.goBack();
+  };
+
+  const handleLogout = async () => {
+    clearError();
+    await logout();
   };
 
   return (
@@ -71,6 +74,12 @@ const EditAccountScreen = ({ navigation }: Props) => {
             <Text style={styles.subtitle}>
               Update your profile information and keep your contact details current.
             </Text>
+
+            {error ? (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
 
             <AppInput
               label="First Name"
@@ -98,26 +107,32 @@ const EditAccountScreen = ({ navigation }: Props) => {
               keyboardType="email-address"
               autoCapitalize="none"
             />
-            <AppInput
-              label="Password"
-              placeholder="At least 6 characters"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-            />
+
+            {isLoading ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={colors.primary} />
+                <Text style={styles.loadingText}>Updating your account...</Text>
+              </View>
+            ) : null}
 
             <View style={styles.buttonGroup}>
               <AppButton
-                title="Save Changes"
+                title={isLoading ? 'Saving Changes...' : 'Save Changes'}
                 onPress={handleSave}
-                disabled={isDisabled}
+                disabled={isDisabled || isLoading}
               />
               <AppButton
                 title="Cancel"
                 onPress={() => navigation.goBack()}
                 variant="secondary"
+                disabled={isLoading}
               />
-              <AppButton title="Log Out" onPress={logout} variant="ghost" />
+              <AppButton
+                title={isLoading ? 'Logging Out...' : 'Log Out'}
+                onPress={handleLogout}
+                variant="ghost"
+                disabled={isLoading}
+              />
             </View>
           </View>
         </ScrollView>
@@ -154,6 +169,31 @@ const styles = StyleSheet.create({
     color: colors.muted,
     fontSize: 14,
     lineHeight: 20,
+  },
+  errorBanner: {
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   buttonGroup: {
     gap: spacing.sm,

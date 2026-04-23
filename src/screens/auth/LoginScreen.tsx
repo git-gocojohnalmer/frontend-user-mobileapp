@@ -1,6 +1,6 @@
-
 import React, { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
   Platform,
@@ -29,7 +29,7 @@ const highlights = [
 ] as const;
 
 const LoginScreen = ({ navigation }: Props) => {
-  const { login } = useAuth();
+  const { login, isLoading, error, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
@@ -38,8 +38,9 @@ const LoginScreen = ({ navigation }: Props) => {
     [email, password]
   );
 
-  const handleLogin = () => {
-    login({
+  const handleLogin = async () => {
+    clearError();
+    await login({
       email: email.trim(),
       password: password.trim(),
     });
@@ -91,6 +92,12 @@ const LoginScreen = ({ navigation }: Props) => {
                 </Text>
               </View>
 
+              {error ? (
+                <View style={styles.errorBanner}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
+
               <AppInput
                 label="Email"
                 placeholder="name@example.com"
@@ -109,16 +116,23 @@ const LoginScreen = ({ navigation }: Props) => {
                 autoComplete="password"
               />
 
-              <TouchableOpacity activeOpacity={0.8} style={styles.helperRow}>
+              <TouchableOpacity activeOpacity={0.8} style={styles.helperRow} disabled={isLoading}>
                 <Text style={styles.helperText}>Forgot password?</Text>
               </TouchableOpacity>
 
               <AppButton
-                title="Access FleXpark"
+                title={isLoading ? 'Accessing FleXpark...' : 'Access FleXpark'}
                 onPress={handleLogin}
-                disabled={isDisabled}
+                disabled={isDisabled || isLoading}
                 style={styles.primaryButton}
               />
+
+              {isLoading ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                  <Text style={styles.loadingText}>Signing you in...</Text>
+                </View>
+              ) : null}
 
               <View style={styles.footerRow}>
                 <Text style={styles.footerText}>New to FleXpark?</Text>
@@ -127,6 +141,7 @@ const LoginScreen = ({ navigation }: Props) => {
                   onPress={() => navigation.navigate('SignIn')}
                   variant="ghost"
                   style={styles.ghostButton}
+                  disabled={isLoading}
                 />
               </View>
             </View>
@@ -258,6 +273,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 20,
   },
+  errorBanner: {
+    backgroundColor: colors.dangerLight,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: spacing.md,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
+  },
   helperRow: {
     alignSelf: 'flex-end',
     marginTop: -4,
@@ -270,6 +300,18 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     marginTop: spacing.sm,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: spacing.md,
+  },
+  loadingText: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
   },
   footerRow: {
     alignItems: 'center',

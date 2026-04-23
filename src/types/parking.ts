@@ -3,10 +3,12 @@ export type UserProfile = {
   middleName: string;
   lastName: string;
   email: string;
-  password: string;
-  confirmPassword: string;
   name?: string;
   fullName?: string;
+};
+
+export type RegisterProfile = UserProfile & {
+  password: string;
 };
 
 export type UpdateProfile = {
@@ -14,7 +16,6 @@ export type UpdateProfile = {
   middleName: string;
   lastName: string;
   email: string;
-  password: string;
 };
 
 export type ParkingCoordinate = {

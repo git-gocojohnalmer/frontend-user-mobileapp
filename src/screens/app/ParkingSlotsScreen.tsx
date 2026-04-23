@@ -20,14 +20,14 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
             <View style={styles.summaryIntro}>
               <View style={styles.summaryBadge}>
                 <Ionicons name="analytics" size={16} color={colors.primary} />
-                <Text style={styles.summaryBadgeText}>Live status</Text>
+                <Text style={styles.summaryBadgeText}>Live Status</Text>
               </View>
               <View style={styles.titleRow}>
                 <Ionicons name="car-sport" size={22} color={colors.primary} />
                 <Text style={styles.title}>{slot.locationName}</Text>
               </View>
               <Text style={styles.helperText}>
-                Real-time parking overview to help drivers scan availability before arriving.
+                Real-time parking Overview to help drivers scan availability before arriving.
               </Text>
             </View>
 
@@ -39,7 +39,7 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
 
           <View style={styles.progressPanel}>
             <View style={styles.progressLabelRow}>
-              <Text style={styles.progressTitle}>Occupancy overview</Text>
+              <Text style={styles.progressTitle}>Occupancy Overview</Text>
               <Text style={styles.progressValue}>{Math.round(availabilityRatio * 100)}% available</Text>
             </View>
             <View style={styles.progressTrack}>

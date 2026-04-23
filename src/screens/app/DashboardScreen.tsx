@@ -1,11 +1,19 @@
 import React from 'react';
-import { FlatList, Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Header from '../../components/dashboard/Header';
 import ParkingSlotCard from '../../components/dashboard/ParkingSlotCard';
-import mockSlots from '../../data/mockSlots';
 import { useAuth } from '../../hooks/useAuth';
+import { useParkingLots } from '../../hooks/useParkingLots';
 import type { AppStackParamList } from '../../types/navigation';
 import type { ParkingSlot } from '../../types/parking';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
@@ -14,33 +22,37 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Dashboard'>;
 
 const DashboardScreen = ({ navigation }: Props) => {
   const { user } = useAuth();
+  const { slots, isLoading, error, refresh } = useParkingLots();
 
-  const totalLocations = mockSlots.length;
-  const totalAvailableSpaces = mockSlots.reduce((sum, slot) => sum + slot.availableSlotCount, 0);
-  const totalCapacity = mockSlots.reduce((sum, slot) => sum + slot.totalSlotCount, 0);
-  const openLocations = mockSlots.filter((slot) => slot.availableSlotCount > 0).length;
-  const nearestSpot = mockSlots[0];
-  const occupancyRate = totalCapacity === 0 ? 0 : Math.round(((totalCapacity - totalAvailableSpaces) / totalCapacity) * 100);
+  const totalLocations = slots.length;
+  const totalAvailableSpaces = slots.reduce((sum, slot) => sum + slot.availableSlotCount, 0);
+  const totalCapacity = slots.reduce((sum, slot) => sum + slot.totalSlotCount, 0);
+  const openLocations = slots.filter((slot) => slot.availableSlotCount > 0).length;
+  const nearestSpot = slots[0] ?? null;
+  const occupancyRate =
+    totalCapacity === 0
+      ? 0
+      : Math.round(((totalCapacity - totalAvailableSpaces) / totalCapacity) * 100);
 
   const stats = [
     {
       id: 'spaces',
       label: 'Open spaces',
-      value: totalAvailableSpaces.toString(),
+      value: isLoading ? '...' : totalAvailableSpaces.toString(),
       icon: 'car-sport-outline' as const,
       accentColor: '#8B5CF6',
     },
     {
       id: 'locations',
       label: 'Live locations',
-      value: openLocations.toString(),
+      value: isLoading ? '...' : openLocations.toString(),
       icon: 'location-outline' as const,
       accentColor: '#06B6D4',
     },
     {
       id: 'capacity',
       label: 'Occupancy',
-      value: `${occupancyRate}%`,
+      value: isLoading ? '...' : `${occupancyRate}%`,
       icon: 'speedometer-outline' as const,
       accentColor: '#22C55E',
     },
@@ -51,13 +63,21 @@ const DashboardScreen = ({ navigation }: Props) => {
       id: 'map',
       label: 'Open map',
       icon: 'map-outline' as const,
-      onPress: () => navigation.navigate('Location', { slot: nearestSpot }),
+      onPress: () => {
+        if (nearestSpot?.id) {
+          navigation.navigate('Location', { slot: nearestSpot });
+        }
+      },
     },
     {
       id: 'slots',
       label: 'View slots',
       icon: 'grid-outline' as const,
-      onPress: () => navigation.navigate('ParkingSlots', { slot: nearestSpot }),
+      onPress: () => {
+        if (nearestSpot?.id) {
+          navigation.navigate('ParkingSlots', { slot: nearestSpot });
+        }
+      },
     },
     {
       id: 'account',
@@ -75,14 +95,30 @@ const DashboardScreen = ({ navigation }: Props) => {
     />
   );
 
+  const renderEmpty = () => (
+    <View style={styles.emptyState}>
+      {isLoading ? (
+        <>
+          <ActivityIndicator size="small" color={colors.primary} />
+          <Text style={styles.emptyText}>Loading parking lots...</Text>
+        </>
+      ) : (
+        <Text style={styles.emptyText}>No parking lots found</Text>
+      )}
+    </View>
+  );
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <FlatList
-        data={mockSlots}
+        data={slots}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.contentContainer}
         showsVerticalScrollIndicator={false}
+        onRefresh={refresh}
+        refreshing={isLoading}
+        ListEmptyComponent={renderEmpty}
         ListHeaderComponent={
           <View style={styles.headerContainer}>
             <Header name={user?.firstName ?? 'Driver'} onPressSettings={() => navigation.navigate('EditAccount')} />
@@ -109,16 +145,29 @@ const DashboardScreen = ({ navigation }: Props) => {
 
               <View style={styles.heroHighlightsRow}>
                 <View style={styles.heroHighlightCard}>
-                  <Text style={styles.heroHighlightValue}>{totalAvailableSpaces}</Text>
+                  <Text style={styles.heroHighlightValue}>
+                    {isLoading ? '...' : totalAvailableSpaces}
+                  </Text>
                   <Text style={styles.heroHighlightLabel}>spaces open now</Text>
                 </View>
                 <View style={styles.heroHighlightDivider} />
                 <View style={styles.heroHighlightCard}>
-                  <Text style={styles.heroHighlightValue}>{nearestSpot?.distance ?? '--'}</Text>
+                  <Text style={styles.heroHighlightValue}>
+                    {isLoading ? '...' : nearestSpot?.distance ?? '--'}
+                  </Text>
                   <Text style={styles.heroHighlightLabel}>closest live spot</Text>
                 </View>
               </View>
             </View>
+
+            {error !== null ? (
+              <View style={styles.errorBanner}>
+                <Text style={styles.errorText}>{error}</Text>
+                <Pressable onPress={refresh} style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}>
+                  <Text style={styles.retryButtonText}>Retry</Text>
+                </Pressable>
+              </View>
+            ) : null}
 
             <View style={styles.statsRow}>
               {stats.map((stat) => (
@@ -154,11 +203,15 @@ const DashboardScreen = ({ navigation }: Props) => {
               <View>
                 <Text style={styles.sectionTitle}>Nearby live parking</Text>
                 <Text style={styles.sectionSubtitle}>
-                  {totalLocations} monitored locations with {totalAvailableSpaces} open spaces right now
+                  {isLoading
+                    ? 'Loading monitored parking locations...'
+                    : `${totalLocations} monitored locations with ${totalAvailableSpaces} open spaces right now`}
                 </Text>
               </View>
               <View style={styles.sectionBadge}>
-                <Text style={styles.sectionBadgeText}>Updated now</Text>
+                <Text style={styles.sectionBadgeText}>
+                  {isLoading ? 'Syncing...' : 'Updated now'}
+                </Text>
               </View>
             </View>
           </View>
@@ -178,6 +231,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.md,
     paddingBottom: spacing.xxl,
+    flexGrow: 1,
   },
   headerContainer: {
     marginBottom: spacing.lg,
@@ -282,6 +336,36 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.78)',
     fontSize: typography.caption,
     fontWeight: '600',
+  },
+  errorBanner: {
+    marginTop: spacing.md,
+    backgroundColor: colors.dangerLight,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    padding: spacing.md,
+    gap: spacing.sm,
+  },
+  errorText: {
+    color: colors.danger,
+    fontSize: typography.body,
+    fontWeight: '600',
+    lineHeight: 20,
+  },
+  retryButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: colors.danger,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 8,
+  },
+  retryButtonPressed: {
+    opacity: 0.85,
+  },
+  retryButtonText: {
+    color: colors.white,
+    fontSize: typography.caption,
+    fontWeight: '700',
   },
   statsRow: {
     flexDirection: 'row',
@@ -393,6 +477,18 @@ const styles = StyleSheet.create({
   },
   separator: {
     height: spacing.md,
+  },
+  emptyState: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+    gap: spacing.sm,
+  },
+  emptyText: {
+    color: colors.textSecondary,
+    fontSize: typography.body,
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
 
