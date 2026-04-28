@@ -13,7 +13,7 @@ import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import Header from '../../components/dashboard/Header';
 import ParkingSlotCard from '../../components/dashboard/ParkingSlotCard';
 import { useAuth } from '../../hooks/useAuth';
-import { useParkingLots } from '../../hooks/useParkingLots';
+import { useAllLayouts } from '../../hooks/useUserLayouts';
 import type { AppStackParamList } from '../../types/navigation';
 import type { ParkingSlot } from '../../types/parking';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
@@ -22,12 +22,11 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Dashboard'>;
 
 const DashboardScreen = ({ navigation }: Props) => {
   const { user } = useAuth();
-  const { slots, isLoading, error, refresh } = useParkingLots();
+  const { slots, isLoading, error, refresh } = useAllLayouts();
 
-  const totalLocations = slots.length;
-  const totalAvailableSpaces = slots.reduce((sum, slot) => sum + slot.availableSlotCount, 0);
-  const totalCapacity = slots.reduce((sum, slot) => sum + slot.totalSlotCount, 0);
-  const openLocations = slots.filter((slot) => slot.availableSlotCount > 0).length;
+  const totalAvailableSpaces = slots.reduce((sum, s) => sum + s.availableSlotCount, 0);
+  const totalCapacity = slots.reduce((sum, s) => sum + s.totalSlotCount, 0);
+  const openLocations = slots.filter((s) => s.availableSlotCount > 0).length;
   const nearestSpot = slots[0] ?? null;
   const occupancyRate =
     totalCapacity === 0
@@ -64,7 +63,7 @@ const DashboardScreen = ({ navigation }: Props) => {
       label: 'Open map',
       icon: 'map-outline' as const,
       onPress: () => {
-        if (nearestSpot?.id) {
+        if (nearestSpot) {
           navigation.navigate('Location', { slot: nearestSpot });
         }
       },
@@ -74,7 +73,7 @@ const DashboardScreen = ({ navigation }: Props) => {
       label: 'View slots',
       icon: 'grid-outline' as const,
       onPress: () => {
-        if (nearestSpot?.id) {
+        if (nearestSpot) {
           navigation.navigate('ParkingSlots', { slot: nearestSpot });
         }
       },
@@ -100,10 +99,10 @@ const DashboardScreen = ({ navigation }: Props) => {
       {isLoading ? (
         <>
           <ActivityIndicator size="small" color={colors.primary} />
-          <Text style={styles.emptyText}>Loading parking lots...</Text>
+          <Text style={styles.emptyText}>Loading your parking area...</Text>
         </>
       ) : (
-        <Text style={styles.emptyText}>No parking lots found</Text>
+        <Text style={styles.emptyText}>No parking area configured</Text>
       )}
     </View>
   );
@@ -121,7 +120,10 @@ const DashboardScreen = ({ navigation }: Props) => {
         ListEmptyComponent={renderEmpty}
         ListHeaderComponent={
           <View style={styles.headerContainer}>
-            <Header name={user?.firstName ?? 'Driver'} onPressSettings={() => navigation.navigate('EditAccount')} />
+            <Header 
+              name={user?.firstName ?? 'Driver'} 
+              onPressSettings={() => navigation.navigate('EditAccount')} 
+            />
 
             <View style={styles.heroCard}>
               <View style={styles.heroGlowPrimary} />
@@ -153,17 +155,20 @@ const DashboardScreen = ({ navigation }: Props) => {
                 <View style={styles.heroHighlightDivider} />
                 <View style={styles.heroHighlightCard}>
                   <Text style={styles.heroHighlightValue}>
-                    {isLoading ? '...' : nearestSpot?.distance ?? '--'}
+                    {isLoading ? '...' : (nearestSpot?.distance ?? '--')}
                   </Text>
                   <Text style={styles.heroHighlightLabel}>closest live spot</Text>
                 </View>
               </View>
             </View>
 
-            {error !== null ? (
+            {error ? (
               <View style={styles.errorBanner}>
                 <Text style={styles.errorText}>{error}</Text>
-                <Pressable onPress={refresh} style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}>
+                <Pressable 
+                  onPress={refresh} 
+                  style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
+                >
                   <Text style={styles.retryButtonText}>Retry</Text>
                 </Pressable>
               </View>
@@ -175,7 +180,9 @@ const DashboardScreen = ({ navigation }: Props) => {
                   <View style={[styles.statIconWrap, { backgroundColor: `${stat.accentColor}18` }]}>
                     <Ionicons name={stat.icon} size={18} color={stat.accentColor} />
                   </View>
-                  <Text style={styles.statValue}>{stat.value}</Text>
+                  <Text style={stat.value === '...' ? styles.statValueLoading : styles.statValue}>
+                    {stat.value}
+                  </Text>
                   <Text style={styles.statLabel}>{stat.label}</Text>
                 </View>
               ))}
@@ -205,7 +212,7 @@ const DashboardScreen = ({ navigation }: Props) => {
                 <Text style={styles.sectionSubtitle}>
                   {isLoading
                     ? 'Loading monitored parking locations...'
-                    : `${totalLocations} monitored locations with ${totalAvailableSpaces} open spaces right now`}
+                    : `${totalAvailableSpaces} open spaces right now`}
                 </Text>
               </View>
               <View style={styles.sectionBadge}>
@@ -391,6 +398,12 @@ const styles = StyleSheet.create({
   },
   statValue: {
     color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  statValueLoading: {
+    color: colors.textSecondary,
     fontSize: 20,
     fontWeight: '800',
     marginBottom: 4,

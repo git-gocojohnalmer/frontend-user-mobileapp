@@ -16,6 +16,7 @@ export type BackendUser = {
   middleName?: string;
   lastName: string;
   email: string;
+  location?: { name: string; link: string };
 };
 
 const firebaseConfig = {

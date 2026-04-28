@@ -5,6 +5,7 @@ export type UserProfile = {
   email: string;
   name?: string;
   fullName?: string;
+  location?: { name: string; link: string };
 };
 
 export type RegisterProfile = UserProfile & {
@@ -51,7 +52,8 @@ export type ParkingLayout = {
   floor: string;
   totalRows: number;
   totalColumns: number;
-  grid: GridCell[][];
+  grid: GridCell[][]; 
+  ownerId?: string;
 };
 
 export type ParkingSlot = {

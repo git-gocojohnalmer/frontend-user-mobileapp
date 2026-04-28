@@ -29,6 +29,7 @@ const toUserProfile = (u: BackendUser): UserProfile => ({
   lastName: u.lastName,
   email: u.email,
   fullName: [u.firstName, u.middleName ?? '', u.lastName].filter(Boolean).join(' '),
+  location: u.location,
 });
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {

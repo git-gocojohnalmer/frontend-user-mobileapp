@@ -1,28 +1,24 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ParkingSlotsScreenProps } from '../../types/navigation';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { ParkingGrid } from '../../components/dashboard/ParkingGrid';
-import { useParkingLots } from '../../hooks/useParkingLots';
+import { useAllLayouts } from '../../hooks/useUserLayouts';
 
 const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
   const { slot: initialSlot } = route.params;
-  const { slots } = useParkingLots({ autoRefresh: true, refreshInterval: 1000 });
+  // Polling every 2 seconds for real-time updates
+  const { slots } = useAllLayouts({ refreshInterval: 2000 });
 
-  // Memoize the current slot to avoid unnecessary re-renders
-  const slot = useMemo(() => {
-    if (slots.length === 0) {
-      return initialSlot;
-    }
-    // Find the slot that matches the location name from route params
-    return slots.find(s => s.locationName === initialSlot.locationName) || initialSlot;
-  }, [slots, initialSlot]);
+  // Match by layoutId (slot.id is the layoutId in the new architecture)
+  const slot = slots.find((s) => s.id === initialSlot.id) ?? initialSlot;
 
   const availableCount = slot.availableSlotCount;
   const totalCount = slot.totalSlotCount;
   const occupiedCount = Math.max(totalCount - availableCount, 0);
   const availabilityRatio = totalCount > 0 ? availableCount / totalCount : 0;
+  const availabilityPercent = Math.round(availabilityRatio * 100);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -39,7 +35,7 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
                 <Text style={styles.title}>{slot.locationName}</Text>
               </View>
               <Text style={styles.helperText}>
-                Real-time parking Overview to help drivers scan availability before arriving.
+                Real-time parking overview to help drivers scan availability before arriving.
               </Text>
             </View>
 
@@ -52,10 +48,10 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
           <View style={styles.progressPanel}>
             <View style={styles.progressLabelRow}>
               <Text style={styles.progressTitle}>Occupancy Overview</Text>
-              <Text style={styles.progressValue}>{Math.round(availabilityRatio * 100)}% available</Text>
+              <Text style={styles.progressValue}>{availabilityPercent}% available</Text>
             </View>
             <View style={styles.progressTrack}>
-              <View style={[styles.progressFill, { width: `${availabilityRatio * 100}%` }]} />
+              <View style={[styles.progressFill, { width: `${availabilityPercent}%` }]} />
             </View>
           </View>
 
@@ -109,7 +105,7 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
         <View style={styles.sectionHeader}>
           <View>
             <Text style={styles.sectionTitle}>Parking Spaces</Text>
-            <Text style={styles.sectionSubtitle}>See all available parking spaces</Text>
+            <Text style={styles.sectionSubtitle}>See all individual parking spaces</Text>
           </View>
 
           <View style={styles.legendRow}>
@@ -420,27 +416,6 @@ const styles = StyleSheet.create({
   },
   occupiedPillText: {
     color: colors.danger,
-  },
-  noLayoutNotice: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: spacing.md,
-    backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    marginVertical: spacing.lg,
-    marginHorizontal: spacing.lg,
-  },
-  noLayoutText: {
-    color: colors.primary,
-    fontSize: typography.body,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  noLayoutSubtext: {
-    color: colors.textSecondary,
-    fontSize: typography.caption,
-    textAlign: 'center',
   },
 });
 
