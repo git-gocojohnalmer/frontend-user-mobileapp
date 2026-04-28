@@ -1,5 +1,12 @@
-import { getApp, getApps, initializeApp } from 'firebase/app';
-import { getAuth, onIdTokenChanged, signInWithEmailAndPassword, signOut, type Auth } from 'firebase/auth';
+// src/services/authService.ts
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  signOut,
+  onIdTokenChanged,
+  type Auth,
+} from 'firebase/auth';
 import { apiFetch, TokenStore } from './api.config';
 
 export type BackendUser = {
@@ -9,27 +16,6 @@ export type BackendUser = {
   middleName?: string;
   lastName: string;
   email: string;
-};
-
-type RegisterPayload = {
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  email: string;
-  password: string;
-};
-
-type LoginPayload = {
-  email: string;
-  password: string;
-};
-
-type UpdateUserProfilePayload = {
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  email: string;
-  password?: string;
 };
 
 const firebaseConfig = {
@@ -42,54 +28,42 @@ const firebaseConfig = {
   appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
 };
 
-const requiredFirebaseConfig = [
-  ['EXPO_PUBLIC_FIREBASE_API_KEY', firebaseConfig.apiKey],
-  ['EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN', firebaseConfig.authDomain],
-  ['EXPO_PUBLIC_FIREBASE_PROJECT_ID', firebaseConfig.projectId],
-  ['EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET', firebaseConfig.storageBucket],
-  ['EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID', firebaseConfig.messagingSenderId],
-  ['EXPO_PUBLIC_FIREBASE_APP_ID', firebaseConfig.appId],
-] as const;
-
-const missingFirebaseConfig = requiredFirebaseConfig
-  .filter(([, value]) => !value?.trim())
-  .map(([key]) => key);
-
-if (missingFirebaseConfig.length > 0) {
-  throw new Error(`Missing Firebase configuration: ${missingFirebaseConfig.join(', ')}`);
-}
-
 const firebaseApp = getApps().length ? getApp() : initializeApp(firebaseConfig);
-
 export const firebaseAuth: Auth = getAuth(firebaseApp);
 
+// keep token fresh
 onIdTokenChanged(firebaseAuth, async (user) => {
   if (!user) {
     await TokenStore.clear();
     return;
   }
-
   const token = await user.getIdToken();
   await TokenStore.set(token);
 });
 
-export const registerUser = async (payload: RegisterPayload): Promise<BackendUser> => {
+export const registerUser = async (payload: {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  email: string;
+  password: string;
+}): Promise<BackendUser> => {
   return apiFetch<BackendUser>('/api/auth/register', {
     method: 'POST',
-    body: {
-      firstName: payload.firstName,
-      middleName: payload.middleName ?? '',
-      lastName: payload.lastName,
-      email: payload.email,
-      password: payload.password,
-    },
+    body: payload,
   });
 };
 
-export const loginUser = async ({ email, password }: LoginPayload): Promise<BackendUser> => {
-  const credential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+export const loginUser = async (payload: {
+  email: string;
+  password: string;
+}): Promise<BackendUser> => {
+  const credential = await signInWithEmailAndPassword(
+    firebaseAuth,
+    payload.email,
+    payload.password
+  );
   const token = await credential.user.getIdToken();
-
   await TokenStore.set(token);
 
   return apiFetch<BackendUser>('/api/auth/login', {
@@ -103,12 +77,18 @@ export const logoutUser = async (): Promise<void> => {
   await TokenStore.clear();
 };
 
-export const updateUserProfile = async (uid: string, payload: UpdateUserProfilePayload): Promise<BackendUser> => {
-  const { password: _password, ...body } = payload;
-
+export const updateUserProfile = async (
+  uid: string,
+  payload: {
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+    email: string;
+  }
+): Promise<BackendUser> => {
   return apiFetch<BackendUser>(`/api/users/${uid}`, {
     method: 'PATCH',
-    body,
+    body: payload,
     withAuth: true,
   });
 };

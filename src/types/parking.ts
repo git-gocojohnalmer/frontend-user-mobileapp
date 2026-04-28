@@ -31,6 +31,29 @@ export type ParkingSpace = {
   status: ParkingSlotStatus;
 };
 
+export type SpotData = {
+  slotId: string;
+  slotName: string;
+  label: string;
+  status: 'available' | 'occupied' | 'reserved' | 'disabled' | string;
+  vehicleType: string;
+};
+
+export type GridCell = {
+  type: 'empty' | 'road' | 'slot';
+  spotId?: string;
+  spotData?: SpotData | null;
+};
+
+export type ParkingLayout = {
+  layoutId: string;
+  layoutName: string;
+  floor: string;
+  totalRows: number;
+  totalColumns: number;
+  grid: GridCell[][];
+};
+
 export type ParkingSlot = {
   id: string;
   locationName: string;
@@ -38,7 +61,9 @@ export type ParkingSlot = {
   distance: string;
   rate: string;
   coordinate: ParkingCoordinate;
+  mapLink?: string;
   availableSlotCount: number;
   totalSlotCount: number;
   slots: ParkingSpace[];
+  layouts?: ParkingLayout[];
 };

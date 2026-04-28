@@ -1,11 +1,18 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ParkingSlot } from '../types/parking';
 import { fetchParkingSlots } from '../services/parkingService';
 
-export const useParkingLots = () => {
+interface UseParkingLotsOptions {
+  autoRefresh?: boolean;
+  refreshInterval?: number; // in milliseconds
+}
+
+export const useParkingLots = (options: UseParkingLotsOptions = {}) => {
+  const { autoRefresh = false, refreshInterval = 1000 } = options;
   const [slots, setSlots] = useState<ParkingSlot[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const refresh = useCallback(async () => {
     setIsLoading(true);
@@ -24,6 +31,21 @@ export const useParkingLots = () => {
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Set up auto-refresh interval
+  useEffect(() => {
+    if (autoRefresh) {
+      intervalRef.current = setInterval(() => {
+        void refresh();
+      }, refreshInterval);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
+    }
+  }, [autoRefresh, refreshInterval, refresh]);
 
   return {
     slots,

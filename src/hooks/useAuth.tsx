@@ -42,20 +42,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   }, []);
 
   const login = useCallback(async (profile: { email: string; password: string }) => {
-    setIsLoading(true);
-    setError(null);
+  setIsLoading(true);
+  setError(null);
 
-    try {
-      const backendUser = await loginUser(profile);
-      setUser(toUserProfile(backendUser));
-      setUid(getUid(backendUser));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to login';
-      setError(message);
-      throw err;
-    } finally {
-      setIsLoading(false);
-    }
+  try {
+    console.log('Step 1: Starting login...');
+    const backendUser = await loginUser(profile);
+    console.log('Step 2: Got backend user:', backendUser);
+    setUser(toUserProfile(backendUser));
+    setUid(getUid(backendUser));
+    console.log('Step 3: User state set, should navigate now');
+  } catch (err) {
+    console.log('Login failed at:', err);
+    const message = err instanceof Error ? err.message : 'Failed to login';
+    setError(message);
+    throw err;
+  } finally {
+    setIsLoading(false);
+  }
   }, []);
 
   const logout = useCallback(async () => {

@@ -14,10 +14,11 @@ const LocationScreen = ({ route }: Props) => {
   const availableCount = slot.availableSlotCount;
   const totalCount = slot.totalSlotCount;
   const occupiedCount = Math.max(totalCount - availableCount, 0);
-  const hasCoordinates = Number.isFinite(slot.coordinate.latitude) && Number.isFinite(slot.coordinate.longitude);
-  const mapsUrl = hasCoordinates
-    ? `https://www.google.com/maps/search/?api=1&query=${slot.coordinate.latitude},${slot.coordinate.longitude}`
-    : undefined;
+  const hasCoordinates =
+    Number.isFinite(slot.coordinate.latitude) &&
+    Number.isFinite(slot.coordinate.longitude) &&
+    (slot.coordinate.latitude !== 0 || slot.coordinate.longitude !== 0);
+  const mapsUrl = slot.mapLink;
 
   const handleOpenDirections = async () => {
     if (!mapsUrl) {
@@ -126,7 +127,9 @@ const LocationScreen = ({ route }: Props) => {
             <View style={styles.emptyMapState}>
               <Ionicons name="map-outline" size={36} color={colors.textSecondary} />
               <Text style={styles.emptyMapTitle}>Map preview unavailable</Text>
-              <Text style={styles.emptyMapText}>This parking lot does not have valid coordinates yet.</Text>
+              <Text style={styles.emptyMapText}>
+                This parking lot does not have valid coordinates yet, but you can still open the saved Google Maps link.
+              </Text>
             </View>
           )}
         </View>

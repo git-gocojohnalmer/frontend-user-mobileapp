@@ -1,11 +1,23 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { ParkingSlotsScreenProps } from '../../types/navigation';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
+import { ParkingGrid } from '../../components/dashboard/ParkingGrid';
+import { useParkingLots } from '../../hooks/useParkingLots';
 
 const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
-  const { slot } = route.params;
+  const { slot: initialSlot } = route.params;
+  const { slots } = useParkingLots({ autoRefresh: true, refreshInterval: 1000 });
+
+  // Memoize the current slot to avoid unnecessary re-renders
+  const slot = useMemo(() => {
+    if (slots.length === 0) {
+      return initialSlot;
+    }
+    // Find the slot that matches the location name from route params
+    return slots.find(s => s.locationName === initialSlot.locationName) || initialSlot;
+  }, [slots, initialSlot]);
 
   const availableCount = slot.availableSlotCount;
   const totalCount = slot.totalSlotCount;
@@ -73,6 +85,26 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
             </View>
           </View>
         </View>
+
+        {slot.layouts && slot.layouts.length > 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Parking Layout</Text>
+                <Text style={styles.sectionSubtitle}>Visual grid view of parking spaces</Text>
+              </View>
+            </View>
+            {slot.layouts.map((layout) => (
+              <ParkingGrid
+                key={layout.layoutId}
+                layoutName={layout.layoutName}
+                totalRows={layout.totalRows}
+                totalColumns={layout.totalColumns}
+                grid={layout.grid}
+              />
+            ))}
+          </>
+        )}
 
         <View style={styles.sectionHeader}>
           <View>
@@ -388,6 +420,27 @@ const styles = StyleSheet.create({
   },
   occupiedPillText: {
     color: colors.danger,
+  },
+  noLayoutNotice: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    padding: spacing.lg,
+    marginVertical: spacing.lg,
+    marginHorizontal: spacing.lg,
+  },
+  noLayoutText: {
+    color: colors.primary,
+    fontSize: typography.body,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  noLayoutSubtext: {
+    color: colors.textSecondary,
+    fontSize: typography.caption,
+    textAlign: 'center',
   },
 });
 
