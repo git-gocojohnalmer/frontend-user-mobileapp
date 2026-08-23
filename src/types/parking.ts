@@ -69,3 +69,13 @@ export type ParkingSlot = {
   slots: ParkingSpace[];
   layouts?: ParkingLayout[];
 };
+
+export type ParkingForecast = {
+  layoutId: string;
+  forecastMinutes: number;
+  availableSlotCount: number;
+  expectedOccupancyPercent: number;
+  currentOccupancyPercent: number;
+  basis: string;
+  updatedAt: string;
+};

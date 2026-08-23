@@ -4,7 +4,19 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ParkingSlotsScreenProps } from '../../types/navigation';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { ParkingGrid } from '../../components/dashboard/ParkingGrid';
+import { getMockParkingForecast } from '../../data/mockParkingForecast';
 import { useAllLayouts } from '../../hooks/useUserLayouts';
+
+const getForecastUpdatedLabel = (updatedAt: string) => {
+  const minutesAgo = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(updatedAt).getTime()) / (60 * 1000))
+  );
+
+  if (minutesAgo === 0) return 'Updated just now';
+  if (minutesAgo === 1) return 'Updated 1 minute ago';
+  return `Updated ${minutesAgo} minutes ago`;
+};
 
 const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
   const { slot: initialSlot } = route.params;
@@ -19,6 +31,8 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
   const occupiedCount = Math.max(totalCount - availableCount, 0);
   const availabilityRatio = totalCount > 0 ? availableCount / totalCount : 0;
   const availabilityPercent = Math.round(availabilityRatio * 100);
+  const parkingForecast = getMockParkingForecast(slot.id);
+  const forecastUpdatedLabel = getForecastUpdatedLabel(parkingForecast.updatedAt);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -41,7 +55,7 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
 
             <View style={styles.availabilityHighlight}>
               <Text style={styles.availabilityValue}>{availableCount}</Text>
-              <Text style={styles.availabilityLabel}>Open now</Text>
+              <Text style={styles.availabilityLabel}>Open</Text>
             </View>
           </View>
 
@@ -78,6 +92,53 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
               </View>
               <Text style={styles.metricValue}>{totalCount}</Text>
               <Text style={styles.metricLabel}>Total</Text>
+            </View>
+          </View>
+
+          <View style={styles.forecastPanel}>
+            <View style={styles.forecastHeader}>
+              <View style={styles.forecastTitleRow}>
+                <View style={styles.forecastIconWrap}>
+                  <Ionicons name="time-outline" size={18} color={colors.primary} />
+                </View>
+                <View style={styles.forecastTitleCopy}>
+                  <Text style={styles.forecastTitle}>Parking Forecast</Text>
+                  <Text style={styles.forecastTiming}>
+                    Likely in {parkingForecast.forecastMinutes} minutes
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.forecastEstimatePill}>
+                <Text style={styles.forecastEstimateText}>Estimated</Text>
+              </View>
+            </View>
+
+            <View style={styles.forecastMetricsRow}>
+              <View style={styles.forecastAvailabilityGroup}>
+                <Text style={styles.forecastAvailabilityValue}>
+                  {parkingForecast.availableSlotCount}
+                </Text>
+                <Text style={styles.forecastAvailabilityLabel}>spaces available</Text>
+              </View>
+
+              <View style={styles.forecastOccupancyGroup}>
+                <Text style={styles.forecastOccupancyLabel}>Expected occupancy</Text>
+                <Text style={styles.forecastOccupancyValue}>
+                  {parkingForecast.expectedOccupancyPercent}%
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.forecastCurrentRow}>
+              <Ionicons name="trending-down-outline" size={16} color={colors.success} />
+              <Text style={styles.forecastCurrentText}>
+                Currently: {parkingForecast.currentOccupancyPercent}% occupied
+              </Text>
+            </View>
+
+            <View style={styles.forecastMetaRow}>
+              <Text style={styles.forecastBasis}>{parkingForecast.basis}</Text>
+              <Text style={styles.forecastUpdated}>{forecastUpdatedLabel}</Text>
             </View>
           </View>
         </View>
@@ -300,6 +361,130 @@ const styles = StyleSheet.create({
     fontSize: typography.caption,
     fontWeight: '600',
     marginTop: spacing.xs,
+  },
+  forecastPanel: {
+    backgroundColor: colors.surfaceMuted,
+    borderColor: colors.border,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    marginTop: spacing.md,
+    padding: spacing.md,
+  },
+  forecastHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    justifyContent: 'space-between',
+  },
+  forecastTitleRow: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: spacing.sm,
+  },
+  forecastIconWrap: {
+    alignItems: 'center',
+    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  forecastTitleCopy: {
+    flex: 1,
+  },
+  forecastTitle: {
+    color: colors.text,
+    fontSize: typography.body,
+    fontWeight: '800',
+  },
+  forecastTiming: {
+    color: colors.textSecondary,
+    fontSize: typography.caption,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  forecastEstimatePill: {
+    backgroundColor: colors.background,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+  },
+  forecastEstimateText: {
+    color: colors.primary,
+    fontSize: typography.caption,
+    fontWeight: '700',
+  },
+  forecastMetricsRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  forecastAvailabilityGroup: {
+    flex: 1,
+  },
+  forecastAvailabilityValue: {
+    color: colors.success,
+    fontSize: 28,
+    fontWeight: '800',
+  },
+  forecastAvailabilityLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.caption,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  forecastOccupancyGroup: {
+    backgroundColor: colors.white,
+    borderRadius: radius.md,
+    minWidth: 128,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  forecastOccupancyLabel: {
+    color: colors.textSecondary,
+    fontSize: typography.caption,
+    fontWeight: '600',
+  },
+  forecastOccupancyValue: {
+    color: colors.text,
+    fontSize: 20,
+    fontWeight: '800',
+    marginTop: 2,
+  },
+  forecastCurrentRow: {
+    alignItems: 'center',
+    backgroundColor: colors.successLight,
+    borderRadius: radius.md,
+    flexDirection: 'row',
+    gap: spacing.xs,
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
+  },
+  forecastCurrentText: {
+    color: colors.success,
+    flex: 1,
+    fontSize: typography.caption,
+    fontWeight: '700',
+  },
+  forecastMetaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.xs,
+    justifyContent: 'space-between',
+    marginTop: spacing.sm,
+  },
+  forecastBasis: {
+    color: colors.textSecondary,
+    flexShrink: 1,
+    fontSize: typography.caption,
+  },
+  forecastUpdated: {
+    color: colors.textSecondary,
+    fontSize: typography.caption,
+    fontWeight: '600',
   },
   sectionHeader: {
     marginTop: spacing.xl,
