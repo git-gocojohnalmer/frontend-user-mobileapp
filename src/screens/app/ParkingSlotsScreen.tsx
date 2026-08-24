@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ParkingSlotsScreenProps } from '../../types/navigation';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { ParkingGrid } from '../../components/dashboard/ParkingGrid';
-import { getMockParkingForecast } from '../../data/mockParkingForecast';
+import { useParkingForecast } from '../../hooks/useParkingForecast';
 import { useAllLayouts } from '../../hooks/useUserLayouts';
 
 const getForecastUpdatedLabel = (updatedAt: string) => {
@@ -31,8 +31,11 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
   const occupiedCount = Math.max(totalCount - availableCount, 0);
   const availabilityRatio = totalCount > 0 ? availableCount / totalCount : 0;
   const availabilityPercent = Math.round(availabilityRatio * 100);
-  const parkingForecast = getMockParkingForecast(slot.id);
-  const forecastUpdatedLabel = getForecastUpdatedLabel(parkingForecast.updatedAt);
+  const { forecast: parkingForecast, isLoading: isForecastLoading, error: forecastError } =
+    useParkingForecast(slot.id);
+  const forecastUpdatedLabel = parkingForecast
+    ? getForecastUpdatedLabel(parkingForecast.fetchedAt)
+    : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -96,6 +99,12 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
           </View>
 
           <View style={styles.forecastPanel}>
+            {isForecastLoading ? (
+              <Text style={styles.forecastStatusText}>Loading forecast...</Text>
+            ) : forecastError ? (
+              <Text style={styles.forecastStatusText}>Forecast unavailable: {forecastError}</Text>
+            ) : parkingForecast ? (
+              <>
             <View style={styles.forecastHeader}>
               <View style={styles.forecastTitleRow}>
                 <View style={styles.forecastIconWrap}>
@@ -104,7 +113,7 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
                 <View style={styles.forecastTitleCopy}>
                   <Text style={styles.forecastTitle}>Parking Forecast</Text>
                   <Text style={styles.forecastTiming}>
-                    Likely in {parkingForecast.forecastMinutes} minutes
+                    Likely in {parkingForecast.horizonMinutes} minutes
                   </Text>
                 </View>
               </View>
@@ -116,7 +125,7 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
             <View style={styles.forecastMetricsRow}>
               <View style={styles.forecastAvailabilityGroup}>
                 <Text style={styles.forecastAvailabilityValue}>
-                  {parkingForecast.availableSlotCount}
+                  {parkingForecast.predictedAvailableSlots}
                 </Text>
                 <Text style={styles.forecastAvailabilityLabel}>spaces available</Text>
               </View>
@@ -124,7 +133,7 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
               <View style={styles.forecastOccupancyGroup}>
                 <Text style={styles.forecastOccupancyLabel}>Expected occupancy</Text>
                 <Text style={styles.forecastOccupancyValue}>
-                  {parkingForecast.expectedOccupancyPercent}%
+                  {Math.round(parkingForecast.predictedOccupancy * 100)}%
                 </Text>
               </View>
             </View>
@@ -132,14 +141,18 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
             <View style={styles.forecastCurrentRow}>
               <Ionicons name="trending-down-outline" size={16} color={colors.success} />
               <Text style={styles.forecastCurrentText}>
-                Currently: {parkingForecast.currentOccupancyPercent}% occupied
+                Currently: {100 - availabilityPercent}% occupied
               </Text>
             </View>
 
             <View style={styles.forecastMetaRow}>
-              <Text style={styles.forecastBasis}>{parkingForecast.basis}</Text>
+              <Text style={styles.forecastBasis}>
+                Based on {parkingForecast.trainingRecords} historical records
+              </Text>
               <Text style={styles.forecastUpdated}>{forecastUpdatedLabel}</Text>
             </View>
+              </>
+            ) : null}
           </View>
         </View>
 
@@ -414,6 +427,11 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontSize: typography.caption,
     fontWeight: '700',
+  },
+  forecastStatusText: {
+    color: colors.textSecondary,
+    fontSize: typography.caption,
+    fontWeight: '600',
   },
   forecastMetricsRow: {
     alignItems: 'center',

@@ -1,4 +1,10 @@
-import type { ParkingCoordinate, ParkingSlot, ParkingSpace, ParkingSlotStatus } from '../types/parking';
+import type {
+  ParkingCoordinate,
+  ParkingForecast,
+  ParkingSlot,
+  ParkingSpace,
+  ParkingSlotStatus,
+} from '../types/parking';
 import { apiFetch } from './api.config';
 
 // ── Types from the backend ───────────────────────────────────────────────────
@@ -88,6 +94,19 @@ const getCoordinateFromLink = (googleMapsLink?: string): ParkingCoordinate => {
   return EMPTY_COORDINATE;
 };
 
+const getEmbedUrlFromLink = (googleMapsLink?: string): string | undefined => {
+  const normalizedMapLink = getNormalizedMapLink(googleMapsLink);
+  if (!normalizedMapLink) return undefined;
+
+  // Only return URLs that are already Google Maps embed URLs — these render
+  // inside an iframe/WebView with the exact pin Google itself shows.
+  if (/^https?:\/\/(www\.)?google\.com\/maps\/embed\?/i.test(normalizedMapLink)) {
+    return normalizedMapLink;
+  }
+
+  return undefined;
+};
+
 const getPlaceQueryFromLink = (googleMapsLink?: string): string | undefined => {
   const normalizedMapLink = getNormalizedMapLink(googleMapsLink);
   if (!normalizedMapLink) return undefined;
@@ -168,6 +187,21 @@ export const fetchLayoutsForLot = async (lotId: string): Promise<LayoutApi[]> =>
   }
 };
 
+export const fetchParkingForecast = async (layoutId: string): Promise<ParkingForecast> => {
+  const forecast = await apiFetch<ParkingForecast>(
+    `/api/sensor-history/predict?layoutId=${encodeURIComponent(layoutId)}`,
+    {
+      method: 'GET',
+      withAuth: true,
+    }
+  );
+
+  return {
+    ...forecast,
+    fetchedAt: new Date().toISOString(),
+  };
+};
+
 // ── Main export used by useParkingLots hook ───────────────────────────────────
 
 export const fetchParkingSlots = async (): Promise<ParkingSlot[]> => {
@@ -188,6 +222,7 @@ export const fetchParkingSlots = async (): Promise<ParkingSlot[]> => {
         rate: 'Free',
         coordinate,
         mapLink: buildMapsUrl(lot.googleMapsLink, lot.locationName, coordinate),
+        embedUrl: getEmbedUrlFromLink(lot.googleMapsLink),
         availableSlotCount,
         totalSlotCount: slots.length > 0 ? slots.length : lot.totalSpace,
         slots,

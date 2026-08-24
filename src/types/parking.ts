@@ -64,6 +64,7 @@ export type ParkingSlot = {
   rate: string;
   coordinate: ParkingCoordinate;
   mapLink?: string;
+  embedUrl?: string;
   availableSlotCount: number;
   totalSlotCount: number;
   slots: ParkingSpace[];
@@ -72,10 +73,14 @@ export type ParkingSlot = {
 
 export type ParkingForecast = {
   layoutId: string;
-  forecastMinutes: number;
-  availableSlotCount: number;
-  expectedOccupancyPercent: number;
-  currentOccupancyPercent: number;
-  basis: string;
-  updatedAt: string;
+  predictedOccupancy: number;
+  predictedAvailableSlots: number;
+  horizonMinutes: number;
+  trainingRecords: number;
+  metrics: {
+    mae: number;
+    rmse: number;
+    r2: number | null;
+  };
+  fetchedAt: string;
 };

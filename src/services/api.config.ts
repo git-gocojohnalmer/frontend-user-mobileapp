@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const DEFAULT_API_BASE_URL = 'http://192.168.68.21:8081';
+// const DEFAULT_API_BASE_URL = 'http://192.168.120.216:8081';
+const DEFAULT_API_BASE_URL = 'https://iot-parking-web.onrender.com';
 
 const normalizeBaseUrl = (value?: string) => {
   const trimmedValue = value?.trim();

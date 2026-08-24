@@ -1,6 +1,6 @@
-import React from 'react';
-import { Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import React, { useState } from 'react';
+import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { WebView } from 'react-native-webview';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import type { AppStackParamList } from '../../types/navigation';
@@ -10,14 +10,12 @@ type Props = NativeStackScreenProps<AppStackParamList, 'Location'>;
 
 const LocationScreen = ({ route }: Props) => {
   const { slot } = route.params;
+  const [webViewLoading, setWebViewLoading] = useState(true);
 
   const availableCount = slot.availableSlotCount;
   const totalCount = slot.totalSlotCount;
   const occupiedCount = Math.max(totalCount - availableCount, 0);
-  const hasCoordinates =
-    Number.isFinite(slot.coordinate.latitude) &&
-    Number.isFinite(slot.coordinate.longitude) &&
-    (slot.coordinate.latitude !== 0 || slot.coordinate.longitude !== 0);
+  const embedUrl = slot.embedUrl;
   const mapsUrl = slot.mapLink;
 
   const handleOpenDirections = async () => {
@@ -104,31 +102,36 @@ const LocationScreen = ({ route }: Props) => {
         <View style={styles.mapCard}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Parking map preview</Text>
-            <Text style={styles.sectionSubtitle}>Use this preview before opening turn-by-turn navigation.</Text>
+            <Text style={styles.sectionSubtitle}>Live Google Maps view of the saved location.</Text>
           </View>
 
-          {hasCoordinates ? (
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: slot.coordinate.latitude,
-                longitude: slot.coordinate.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }}
-            >
-              <Marker
-                coordinate={slot.coordinate}
-                title={slot.locationName}
-                description={`${availableCount} available • ${totalCount} total spaces`}
+          {embedUrl ? (
+            <View style={styles.mapWrapper}>
+              <WebView
+                source={{ uri: embedUrl }}
+                style={styles.map}
+                onLoadStart={() => setWebViewLoading(true)}
+                onLoadEnd={() => setWebViewLoading(false)}
+                scrollEnabled={false}
+                javaScriptEnabled
+                domStorageEnabled
+                originWhitelist={['*']}
+                allowsInlineMediaPlayback
+                setSupportMultipleWindows={false}
               />
-            </MapView>
+              {webViewLoading ? (
+                <View style={styles.mapLoadingOverlay} pointerEvents="none">
+                  <ActivityIndicator size="large" color={colors.primary} />
+                </View>
+              ) : null}
+            </View>
           ) : (
             <View style={styles.emptyMapState}>
               <Ionicons name="map-outline" size={36} color={colors.textSecondary} />
               <Text style={styles.emptyMapTitle}>Map preview unavailable</Text>
               <Text style={styles.emptyMapText}>
-                This parking lot does not have valid coordinates yet, but you can still open the saved Google Maps link.
+                This parking lot does not have a Google Maps embed link configured yet. Ask an admin to paste the iframe
+                from Google Maps → Share → Embed a map.
               </Text>
             </View>
           )}
@@ -321,10 +324,22 @@ const styles = StyleSheet.create({
     fontSize: typography.body,
     marginTop: spacing.xs,
   },
-  map: {
+  mapWrapper: {
     width: '100%',
     height: 360,
     borderRadius: radius.xl,
+    overflow: 'hidden',
+    backgroundColor: colors.surfaceMuted,
+  },
+  map: {
+    flex: 1,
+    backgroundColor: 'transparent',
+  },
+  mapLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surfaceMuted,
   },
   emptyMapState: {
     height: 220,

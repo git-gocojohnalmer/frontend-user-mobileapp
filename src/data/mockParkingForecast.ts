@@ -8,10 +8,10 @@ const mockForecastUpdatedAt = new Date(Date.now() - 2 * 60 * 1000).toISOString()
  */
 export const getMockParkingForecast = (layoutId: string): ParkingForecast => ({
   layoutId,
-  forecastMinutes: 30,
-  availableSlotCount: 18,
-  expectedOccupancyPercent: 64,
-  currentOccupancyPercent: 72,
-  basis: 'Based on recent parking activity',
-  updatedAt: mockForecastUpdatedAt,
+  predictedOccupancy: 0.64,
+  predictedAvailableSlots: 18,
+  horizonMinutes: 30,
+  trainingRecords: 0,
+  metrics: { mae: 0, rmse: 0, r2: null },
+  fetchedAt: mockForecastUpdatedAt,
 });

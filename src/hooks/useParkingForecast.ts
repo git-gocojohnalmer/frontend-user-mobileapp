@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { getMockParkingForecast } from '../data/mockParkingForecast';
+import { useEffect, useState } from 'react';
+import { fetchParkingForecast } from '../services/parkingService';
 import type { ParkingForecast } from '../types/parking';
 
 type UseParkingForecastResult = {
@@ -8,16 +8,39 @@ type UseParkingForecastResult = {
   error: string | null;
 };
 
-/**
- * UI-facing forecast boundary. Replace the mock lookup with an admin forecast
- * subscription or API request without changing the consuming screens.
- */
 export const useParkingForecast = (layoutId: string): UseParkingForecastResult => {
-  const forecast = useMemo(() => getMockParkingForecast(layoutId), [layoutId]);
+  const [forecast, setForecast] = useState<ParkingForecast | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    setForecast(null);
+    setIsLoading(true);
+    setError(null);
+
+    fetchParkingForecast(layoutId)
+      .then((result) => {
+        if (!cancelled) setForecast(result);
+      })
+      .catch((requestError: unknown) => {
+        if (!cancelled) {
+          setError(requestError instanceof Error ? requestError.message : 'Unable to load parking forecast');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [layoutId]);
 
   return {
     forecast,
-    isLoading: false,
-    error: null,
+    isLoading,
+    error,
   };
 };
