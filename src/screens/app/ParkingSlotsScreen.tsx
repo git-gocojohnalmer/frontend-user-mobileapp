@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ParkingSlotsScreenProps } from '../../types/navigation';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
 import { ParkingGrid } from '../../components/dashboard/ParkingGrid';
+import { VehicleIcon } from '../../components/dashboard/VehicleIcon';
 import { useParkingForecast } from '../../hooks/useParkingForecast';
 import { useAllLayouts } from '../../hooks/useUserLayouts';
 
@@ -28,7 +29,8 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
 
   const availableCount = slot.availableSlotCount;
   const totalCount = slot.totalSlotCount;
-  const occupiedCount = Math.max(totalCount - availableCount, 0);
+  const reservedCount = slot.slots.filter((parkingSpace) => parkingSpace.status === 'Reserved').length;
+  const occupiedCount = Math.max(totalCount - availableCount - reservedCount, 0);
   const availabilityRatio = totalCount > 0 ? availableCount / totalCount : 0;
   const availabilityPercent = Math.round(availabilityRatio * 100);
   const { forecast: parkingForecast, isLoading: isForecastLoading, error: forecastError } =
@@ -79,6 +81,14 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
               </View>
               <Text style={styles.metricValue}>{availableCount}</Text>
               <Text style={styles.metricLabel}>Available</Text>
+            </View>
+
+            <View style={styles.metricCard}>
+              <View style={styles.metricIconWrap}>
+                <Ionicons name="time-outline" size={18} color={colors.warning} />
+              </View>
+              <Text style={styles.metricValue}>{reservedCount}</Text>
+              <Text style={styles.metricLabel}>Reserved</Text>
             </View>
 
             <View style={styles.metricCard}>
@@ -191,32 +201,45 @@ const ParkingSlotsScreen = ({ route }: ParkingSlotsScreenProps) => {
               <View style={[styles.legendDot, styles.occupiedDot]} />
               <Text style={styles.legendText}>Occupied</Text>
             </View>
+            <View style={styles.legendItem}>
+              <View style={[styles.legendDot, styles.reservedDot]} />
+              <Text style={styles.legendText}>Reserved</Text>
+            </View>
           </View>
         </View>
 
         <View style={styles.grid}>
           {slot.slots.map((parkingSpace) => {
             const isAvailable = parkingSpace.status === 'Available';
+            const isReserved = parkingSpace.status === 'Reserved';
 
             return (
               <View key={parkingSpace.id} style={styles.slotCard}>
-                <View style={[styles.slotInnerCard, isAvailable ? styles.availableCard : styles.occupiedCard]}>
+                <View style={[styles.slotInnerCard, isAvailable ? styles.availableCard : isReserved ? styles.reservedCard : styles.occupiedCard]}>
                   <View style={styles.slotTopRow}>
-                    <View style={[styles.slotStatusIcon, isAvailable ? styles.slotStatusIconAvailable : styles.slotStatusIconOccupied]}>
-                      <Ionicons
-                        name={isAvailable ? 'car-outline' : 'lock-closed-outline'}
-                        size={16}
-                        color={isAvailable ? colors.success : colors.danger}
-                      />
+                    <View style={[styles.slotStatusIcon, isAvailable ? styles.slotStatusIconAvailable : isReserved ? styles.slotStatusIconReserved : styles.slotStatusIconOccupied]}>
+                      {isReserved ? (
+                        <Ionicons
+                          name="time-outline"
+                          size={16}
+                          color={colors.warning}
+                        />
+                      ) : (
+                        <VehicleIcon
+                          vehicleType={parkingSpace.vehicleType}
+                          size={16}
+                          color={isAvailable ? colors.success : colors.danger}
+                        />
+                      )}
                     </View>
-                    <Text style={[styles.slotPill, isAvailable ? styles.availablePillText : styles.occupiedPillText]}>
+                    <Text style={[styles.slotPill, isAvailable ? styles.availablePillText : isReserved ? styles.reservedPillText : styles.occupiedPillText]}>
                       {parkingSpace.status}
                     </Text>
                   </View>
 
                   <View style={styles.slotContent}>
                     <Text style={styles.slotEyebrow}>Space</Text>
-                    <Text style={[styles.slotLabel, isAvailable ? styles.availableText : styles.occupiedText]}>
+                    <Text style={[styles.slotLabel, isAvailable ? styles.availableText : isReserved ? styles.reservedText : styles.occupiedText]}>
                       {parkingSpace.label}
                     </Text>
                   </View>
@@ -540,6 +563,9 @@ const styles = StyleSheet.create({
   occupiedDot: {
     backgroundColor: colors.danger,
   },
+  reservedDot: {
+    backgroundColor: colors.warning,
+  },
   legendText: {
     color: colors.textSecondary,
     fontSize: 13,
@@ -581,6 +607,9 @@ const styles = StyleSheet.create({
   slotStatusIconOccupied: {
     backgroundColor: colors.white,
   },
+  slotStatusIconReserved: {
+    backgroundColor: colors.white,
+  },
   slotContent: {
     marginTop: spacing.lg,
   },
@@ -608,17 +637,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.dangerLight,
     borderColor: colors.danger,
   },
+  reservedCard: {
+    backgroundColor: colors.warningLight,
+    borderColor: colors.warning,
+  },
   availableText: {
     color: colors.success,
   },
   occupiedText: {
     color: colors.danger,
   },
+  reservedText: {
+    color: colors.warning,
+  },
   availablePillText: {
     color: colors.success,
   },
   occupiedPillText: {
     color: colors.danger,
+  },
+  reservedPillText: {
+    color: colors.warning,
   },
 });
 

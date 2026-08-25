@@ -14,7 +14,9 @@ const LocationScreen = ({ route }: Props) => {
 
   const availableCount = slot.availableSlotCount;
   const totalCount = slot.totalSlotCount;
-  const occupiedCount = Math.max(totalCount - availableCount, 0);
+  const reservedCount = slot.slots.filter((parkingSpace) => parkingSpace.status === 'Reserved').length;
+  const occupiedCount = Math.max(totalCount - availableCount - reservedCount, 0);
+  const isReserved = slot.status === 'Reserved';
   const embedUrl = slot.embedUrl;
   const mapsUrl = slot.mapLink;
 
@@ -39,9 +41,9 @@ const LocationScreen = ({ route }: Props) => {
               <Ionicons name="navigate" size={16} color={colors.primary} />
               <Text style={styles.liveBadgeText}>Navigation ready</Text>
             </View>
-            <View style={[styles.statusBadge, slot.status === 'Available' ? styles.statusBadgeAvailable : styles.statusBadgeOccupied]}>
-              <View style={[styles.statusDot, slot.status === 'Available' ? styles.statusDotAvailable : styles.statusDotOccupied]} />
-              <Text style={[styles.statusBadgeText, slot.status === 'Available' ? styles.statusTextAvailable : styles.statusTextOccupied]}>
+            <View style={[styles.statusBadge, slot.status === 'Available' ? styles.statusBadgeAvailable : isReserved ? styles.statusBadgeReserved : styles.statusBadgeOccupied]}>
+              <View style={[styles.statusDot, slot.status === 'Available' ? styles.statusDotAvailable : isReserved ? styles.statusDotReserved : styles.statusDotOccupied]} />
+              <Text style={[styles.statusBadgeText, slot.status === 'Available' ? styles.statusTextAvailable : isReserved ? styles.statusTextReserved : styles.statusTextOccupied]}>
                 {slot.status}
               </Text>
             </View>
@@ -63,6 +65,10 @@ const LocationScreen = ({ route }: Props) => {
             <View style={[styles.metricCard, styles.metricCardPrimary]}>
               <Text style={styles.metricValue}>{availableCount}</Text>
               <Text style={styles.metricLabel}>Available spots</Text>
+            </View>
+            <View style={styles.metricCard}>
+              <Text style={styles.metricValue}>{reservedCount}</Text>
+              <Text style={styles.metricLabel}>Reserved spots</Text>
             </View>
             <View style={styles.metricCard}>
               <Text style={styles.metricValue}>{occupiedCount}</Text>
@@ -192,6 +198,9 @@ const styles = StyleSheet.create({
   statusBadgeOccupied: {
     backgroundColor: colors.dangerLight,
   },
+  statusBadgeReserved: {
+    backgroundColor: colors.warningLight,
+  },
   statusDot: {
     width: 8,
     height: 8,
@@ -203,6 +212,9 @@ const styles = StyleSheet.create({
   statusDotOccupied: {
     backgroundColor: colors.danger,
   },
+  statusDotReserved: {
+    backgroundColor: colors.warning,
+  },
   statusBadgeText: {
     fontSize: typography.caption,
     fontWeight: '700',
@@ -212,6 +224,9 @@ const styles = StyleSheet.create({
   },
   statusTextOccupied: {
     color: colors.danger,
+  },
+  statusTextReserved: {
+    color: colors.warning,
   },
   titleRow: {
     flexDirection: 'row',

@@ -8,6 +8,7 @@ import {
   extractSpacesFromGrid,
   fetchOwnerLocation,
   mergeStatusesIntoGrid,
+  mergeStatusSources,
   parseActiveLayouts,
   type RawLayout,
 } from '../services/layoutService';
@@ -57,11 +58,12 @@ export const useAllLayouts = (_options: UseAllLayoutsOptions = {}) => {
         if (snapshot.exists()) {
           const data = snapshot.val() as Record<
             string,
-            { spotId?: string; status?: string } | null
+            { spotId?: string; slotId?: string; status?: string } | null
           >;
-          for (const sensor of Object.values(data)) {
-            if (sensor && sensor.spotId && sensor.status) {
-              result[sensor.spotId] = sensor.status;
+          for (const [sensorId, sensor] of Object.entries(data)) {
+            const spotId = sensor?.spotId ?? sensor?.slotId ?? sensorId;
+            if (sensor?.status) {
+              result[spotId] = sensor.status;
             }
           }
         }
@@ -93,9 +95,9 @@ export const useAllLayouts = (_options: UseAllLayoutsOptions = {}) => {
     return () => unsub();
   }, []);
 
-  // Sensor takes priority over spot for the same spotId
+  // Resolve by occupancy severity, so occupied always wins over reserved/free.
   const statusMap = useMemo(
-    () => ({ ...spotMap, ...sensorMap }),
+    () => mergeStatusSources(spotMap, sensorMap),
     [spotMap, sensorMap]
   );
 
@@ -152,6 +154,7 @@ export const useAllLayouts = (_options: UseAllLayoutsOptions = {}) => {
       const mergedGrid = mergeStatusesIntoGrid(layout.grid, statusMap);
       const spaces = extractSpacesFromGrid(mergedGrid, statusMap);
       const available = spaces.filter((s) => s.status === 'Available').length;
+      const reserved = spaces.filter((s) => s.status === 'Reserved').length;
 
       const ownerLoc = layout.ownerId ? ownerLocations[layout.ownerId] : null;
       const locationName = ownerLoc?.name || layout.layoutName;
@@ -162,7 +165,7 @@ export const useAllLayouts = (_options: UseAllLayoutsOptions = {}) => {
       return {
         id: layout.layoutId,
         locationName,
-        status: available > 0 ? 'Available' : 'Occupied',
+        status: available > 0 ? 'Available' : reserved > 0 ? 'Reserved' : 'Occupied',
         distance: '-- km',
         rate: 'Free',
         coordinate,

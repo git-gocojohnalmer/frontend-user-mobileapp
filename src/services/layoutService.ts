@@ -40,18 +40,44 @@ export type RawLayout = {
 
 export const normalizeToGridStatus = (raw: string | undefined): string => {
   if (!raw) return 'available';
-  const lower = raw.toLowerCase();
+  const lower = raw.trim().toLowerCase();
   if (lower === 'free' || lower === 'available') return 'available';
+  if (lower === 'reserved') return 'reserved';
   return 'occupied';
 };
 
 export const normalizeToSpaceStatus = (
   raw: string | undefined
-): 'Available' | 'Occupied' => {
+): 'Available' | 'Occupied' | 'Reserved' => {
   if (!raw) return 'Available';
-  const lower = raw.toLowerCase();
+  const lower = raw.trim().toLowerCase();
   if (lower === 'free' || lower === 'available') return 'Available';
+  if (lower === 'reserved') return 'Reserved';
   return 'Occupied';
+};
+
+const getStatusPriority = (status: string | undefined): number => {
+  const normalized = status?.trim().toLowerCase();
+  if (normalized === 'occupied') return 3;
+  if (normalized === 'reserved') return 2;
+  if (normalized === 'free' || normalized === 'available') return 1;
+  return 0;
+};
+
+export const mergeStatusSources = (
+  spotMap: Record<string, string>,
+  sensorMap: Record<string, string>
+): Record<string, string> => {
+  const merged = { ...spotMap };
+
+  for (const [spotId, sensorStatus] of Object.entries(sensorMap)) {
+    const spotStatus = merged[spotId];
+    if (getStatusPriority(sensorStatus) >= getStatusPriority(spotStatus)) {
+      merged[spotId] = sensorStatus;
+    }
+  }
+
+  return merged;
 };
 
 // ── Coordinate extraction ─────────────────────────────────────────────────────
@@ -129,7 +155,7 @@ export const mergeStatusesIntoGrid = (
     row.map((cell) => {
       if (cell.type !== 'slot' || !cell.spotId || !cell.spotData) return cell;
       const sd = cell.spotData as unknown as RawSpotData;
-      const raw = statusMap[cell.spotId] ?? sd.status;
+      const raw = statusMap[cell.spotId] ?? statusMap[sd.slotId] ?? sd.status;
       return {
         ...cell,
         spotData: {
@@ -152,11 +178,12 @@ export const extractSpacesFromGrid = (
     for (const cell of row) {
       if (cell.type !== 'slot' || !cell.spotId) continue;
       const sd = (cell.spotData ?? {}) as unknown as RawSpotData;
-      const raw = statusMap[cell.spotId] ?? sd.status;
+      const raw = statusMap[cell.spotId] ?? statusMap[sd.slotId] ?? sd.status;
       spaces.push({
         id: sd.slotId ?? cell.spotId,
         label: sd.label || sd.slotName || sd.slotId || cell.spotId || '?',
         status: normalizeToSpaceStatus(raw),
+        vehicleType: sd.vehicleType ?? 'any',
       });
     }
   }

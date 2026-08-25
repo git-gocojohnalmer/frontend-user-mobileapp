@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { GridCell } from '../../types/parking';
 import { colors, spacing, typography } from '../../theme';
+import { VehicleIcon } from './VehicleIcon';
 
 interface ParkingGridProps {
   grid: GridCell[][];
@@ -57,8 +58,11 @@ export const ParkingGrid: React.FC<ParkingGridProps> = ({
     }
 
     // Slot cell
-    const isAvailable = cell.spotData?.status === 'available';
+    const status = cell.spotData?.status;
+    const isAvailable = status === 'available';
+    const isReserved = status === 'reserved';
     const spotLabel = cell.spotData?.label || cell.spotId || '?';
+    const iconColor = isAvailable ? colors.success : isReserved ? colors.warning : colors.danger;
 
     return (
       <View
@@ -66,16 +70,29 @@ export const ParkingGrid: React.FC<ParkingGridProps> = ({
         style={[
           styles.cell,
           styles.slotCell,
-          isAvailable ? styles.slotAvailable : styles.slotOccupied,
+          isAvailable
+            ? styles.slotAvailable
+            : isReserved
+              ? styles.slotReserved
+              : styles.slotOccupied,
           { width: cellSize, height: cellSize },
         ]}
       >
-        <Ionicons
-          name={isAvailable ? 'car-outline' : 'lock-closed-outline'}
-          size={20}
-          color={isAvailable ? colors.success : colors.danger}
-        />
-        <Text style={[styles.slotLabel, isAvailable ? styles.slotLabelAvailable : styles.slotLabelOccupied]}>
+        {isReserved ? (
+          <Ionicons name="time-outline" size={20} color={iconColor} />
+        ) : (
+          <VehicleIcon vehicleType={cell.spotData?.vehicleType} size={20} color={iconColor} />
+        )}
+        <Text
+          style={[
+            styles.slotLabel,
+            isAvailable
+              ? styles.slotLabelAvailable
+              : isReserved
+                ? styles.slotLabelReserved
+                : styles.slotLabelOccupied,
+          ]}
+        >
           {spotLabel}
         </Text>
       </View>
@@ -115,6 +132,10 @@ export const ParkingGrid: React.FC<ParkingGridProps> = ({
           <Text style={styles.legendText}>Occupied</Text>
         </View>
         <View style={styles.legendItem}>
+          <View style={[styles.legendDot, { backgroundColor: colors.warning }]} />
+          <Text style={styles.legendText}>Reserved</Text>
+        </View>
+        <View style={styles.legendItem}>
           <View style={[styles.legendDot, { backgroundColor: '#F3F4F6' }]} />
           <Text style={styles.legendText}>Road/Empty</Text>
         </View>
@@ -134,12 +155,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   title: {
-    ...typography.heading3,
+    fontSize: typography.subtitle,
+    fontWeight: '700',
     color: colors.text,
     marginBottom: spacing.xs,
   },
   subtitle: {
-    ...typography.caption,
+    fontSize: typography.caption,
     color: colors.textSecondary,
   },
   gridContainer: {
@@ -175,8 +197,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
     borderColor: colors.danger,
   },
+  slotReserved: {
+    backgroundColor: colors.warningLight,
+    borderColor: colors.warning,
+  },
   slotLabel: {
-    ...typography.caption,
+    fontSize: typography.caption,
     fontWeight: '600',
     marginTop: spacing.xs,
     maxWidth: '100%',
@@ -187,6 +213,9 @@ const styles = StyleSheet.create({
   slotLabelOccupied: {
     color: '#7F1D1D',
   },
+  slotLabelReserved: {
+    color: '#854D0E',
+  },
   emptyContainer: {
     padding: spacing.lg,
     alignItems: 'center',
@@ -195,7 +224,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   emptyText: {
-    ...typography.body,
+    fontSize: typography.body,
     color: colors.textSecondary,
   },
   legend: {
@@ -216,7 +245,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   legendText: {
-    ...typography.caption,
+    fontSize: typography.caption,
     color: colors.textSecondary,
   },
 });

@@ -13,6 +13,8 @@ export const colors = {
   successLight: '#DCFCE7',
   danger: '#DC2626',
   dangerLight: '#FEE2E2',
+  warning: '#CA8A04',
+  warningLight: '#FEF9C3',
   shadow: '#0F172A',
   white: '#FFFFFF',
   card: '#FFFFFF',

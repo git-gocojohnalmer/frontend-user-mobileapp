@@ -1,28 +1,8 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Feather, Ionicons } from '@expo/vector-icons';
 import { colors, radius, shadows, spacing, typography } from '../../theme';
-
-type ParkingSpace = {
-  id: string;
-  label: string;
-  status: 'Available' | 'Occupied';
-};
-
-type ParkingSlot = {
-  id: string;
-  locationName: string;
-  status: 'Available' | 'Occupied';
-  distance: string;
-  rate: string;
-  coordinate: {
-    latitude: number;
-    longitude: number;
-  };
-  availableSlotCount: number;
-  totalSlotCount: number;
-  slots: ParkingSpace[];
-};
+import type { ParkingSlot } from '../../types/parking';
 
 type ParkingSlotCardProps = {
   slot: ParkingSlot;
@@ -36,9 +16,11 @@ const ParkingSlotCard = ({
   onPressViewSlots,
 }: ParkingSlotCardProps) => {
   const isAvailable = slot.status === 'Available';
+  const isReserved = slot.status === 'Reserved';
   const totalSlots = Math.max(slot.totalSlotCount, 0);
   const availableSlots = Math.min(Math.max(slot.availableSlotCount, 0), totalSlots);
-  const occupiedSlots = Math.max(totalSlots - availableSlots, 0);
+  const reservedSlots = slot.slots.filter((parkingSpace) => parkingSpace.status === 'Reserved').length;
+  const occupiedSlots = Math.max(totalSlots - availableSlots - reservedSlots, 0);
   const availabilityRatio = totalSlots > 0 ? availableSlots / totalSlots : 0;
   const availabilityWidth = Math.max(availabilityRatio * 100, 6);
 
@@ -47,9 +29,9 @@ const ParkingSlotCard = ({
       <View style={styles.headerRow}>
         <View style={styles.titleSection}>
           <View style={styles.locationIconWrap}>
-            <MaterialCommunityIcons
+            <Ionicons
               color={colors.primary}
-              name="parking"
+              name="car-sport-outline"
               size={20}
             />
           </View>
@@ -66,19 +48,31 @@ const ParkingSlotCard = ({
         <View
           style={[
             styles.statusPill,
-            isAvailable ? styles.availablePill : styles.occupiedPill,
+            isAvailable
+              ? styles.availablePill
+              : isReserved
+                ? styles.reservedPill
+                : styles.occupiedPill,
           ]}
         >
           <View
             style={[
               styles.statusDot,
-              isAvailable ? styles.availableDot : styles.occupiedDot,
+              isAvailable
+                ? styles.availableDot
+                : isReserved
+                  ? styles.reservedDot
+                  : styles.occupiedDot,
             ]}
           />
           <Text
             style={[
               styles.statusText,
-              isAvailable ? styles.availableText : styles.occupiedText,
+              isAvailable
+                ? styles.availableText
+                : isReserved
+                  ? styles.reservedText
+                  : styles.occupiedText,
             ]}
           >
             {slot.status}
@@ -116,7 +110,9 @@ const ParkingSlotCard = ({
           </View>
 
           <View style={styles.capacityChip}>
-            <Text style={styles.capacityChipText}>{occupiedSlots} occupied</Text>
+            <Text style={styles.capacityChipText}>
+              {occupiedSlots} occupied{reservedSlots > 0 ? ` · ${reservedSlots} reserved` : ''}
+            </Text>
           </View>
         </View>
 
@@ -232,6 +228,9 @@ const styles = StyleSheet.create({
   occupiedPill: {
     backgroundColor: colors.dangerLight,
   },
+  reservedPill: {
+    backgroundColor: colors.warningLight,
+  },
   statusDot: {
     borderRadius: radius.pill,
     height: 8,
@@ -244,6 +243,9 @@ const styles = StyleSheet.create({
   occupiedDot: {
     backgroundColor: colors.danger,
   },
+  reservedDot: {
+    backgroundColor: colors.warning,
+  },
   statusText: {
     fontSize: typography.caption,
     fontWeight: '700',
@@ -253,6 +255,9 @@ const styles = StyleSheet.create({
   },
   occupiedText: {
     color: colors.danger,
+  },
+  reservedText: {
+    color: colors.warning,
   },
   metricsRow: {
     flexDirection: 'row',

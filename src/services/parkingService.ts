@@ -137,7 +137,11 @@ const buildMapsUrl = (googleMapsLink: string | undefined, locationName: string, 
 };
 
 const mapSpotStatus = (status: string): ParkingSlotStatus =>
-  status === 'available' ? 'Available' : 'Occupied';
+  status.trim().toLowerCase() === 'available'
+    ? 'Available'
+    : status.trim().toLowerCase() === 'reserved'
+      ? 'Reserved'
+      : 'Occupied';
 
 // Flatten all slot-type cells across all layouts into ParkingSpace[]
 const extractSlotsFromLayouts = (layouts: LayoutApi[]): ParkingSpace[] => {
@@ -150,6 +154,7 @@ const extractSlotsFromLayouts = (layouts: LayoutApi[]): ParkingSpace[] => {
             id: cell.spotData.slotId,
             label: cell.spotData.label || cell.spotData.slotName || cell.spotData.slotId,
             status: mapSpotStatus(cell.spotData.status),
+            vehicleType: cell.spotData.vehicleType || 'any',
           });
         }
       }
@@ -212,12 +217,18 @@ export const fetchParkingSlots = async (): Promise<ParkingSlot[]> => {
       const layouts = await fetchLayoutsForLot(lot.lotId);
       const slots = extractSlotsFromLayouts(layouts);
       const availableSlotCount = slots.filter((s) => s.status === 'Available').length;
+      const reservedSlotCount = slots.filter((s) => s.status === 'Reserved').length;
       const coordinate = getCoordinateFromLink(lot.googleMapsLink);
 
       return {
         id: lot.lotId,
         locationName: lot.locationName,
-        status: availableSlotCount > 0 ? 'Available' : 'Occupied',
+        status:
+          availableSlotCount > 0
+            ? 'Available'
+            : reservedSlotCount > 0
+              ? 'Reserved'
+              : 'Occupied',
         distance: '-- km',
         rate: 'Free',
         coordinate,
@@ -231,6 +242,17 @@ export const fetchParkingSlots = async (): Promise<ParkingSlot[]> => {
       } as ParkingSlot & { layouts: LayoutApi[] };
     }),
   );
+};
+
+export const updateSpotStatus = async (
+  slotId: string,
+  status: 'available' | 'occupied' | 'reserved'
+): Promise<void> => {
+  await apiFetch<unknown>(`/api/spots/${encodeURIComponent(slotId)}`, {
+    method: 'PATCH',
+    withAuth: true,
+    body: { status },
+  });
 };
 
 // Re-export LayoutApi type so screens can use it

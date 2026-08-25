@@ -24,12 +24,13 @@ export type ParkingCoordinate = {
   longitude: number;
 };
 
-export type ParkingSlotStatus = 'Available' | 'Occupied';
+export type ParkingSlotStatus = 'Available' | 'Occupied' | 'Reserved';
 
 export type ParkingSpace = {
   id: string;
   label: string;
   status: ParkingSlotStatus;
+  vehicleType?: string;
 };
 
 export type SpotData = {
